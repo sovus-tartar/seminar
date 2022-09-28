@@ -19,6 +19,16 @@ void clean_buffer()
         ;
 }
 
+int copy_attributes(int fd1, int fd2)
+{
+    struct stat buf;
+    fstat(fd1, &buf);
+
+    fchmod(fd2, buf.st_mode);
+
+    return 0;
+}
+
 int copy(int fd_in, int fd_out)
 {
     char buf[4 * kb] = "";
@@ -44,6 +54,8 @@ int copy(int fd_in, int fd_out)
             }
         }
     }
+
+    copy_attributes(fd_in, fd_out);
 
     return 0;
 }

@@ -19,6 +19,17 @@ void clean_buffer()
         ;
 }
 
+int check_file_same(char * f1, char * f2)
+{
+    struct stat file1, file2;
+    if(stat(f1, &file1))
+        return -1;
+    if(stat(f2, &file2))
+        return -1;
+
+    return ((file1.st_dev == file2.st_dev) && (file1.st_ino == file2.st_ino));
+}
+
 int copy_attributes(int fd1, int fd2)
 {
     struct stat buf;
@@ -63,6 +74,12 @@ int copy(int fd_in, int fd_out)
 int copy_file_to_file(char *file1, char *file2)
 {
     int fd_1 = -1, fd_2 = -1;
+
+    if (check_file_same(file1, file2))
+    {
+        fprintf(stderr, "mycp: '%s' and '%s' are the same\n", file1, file2);
+        exit(-1);
+    }
 
     if ((set_i > 0) && (!access(file2, F_OK)))
     {
@@ -114,6 +131,8 @@ int copy_file_to_file(char *file1, char *file2)
         perror("cp");
         exit(-1);
     }
+
+    
 
     copy(fd_1, fd_2);
 

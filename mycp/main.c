@@ -15,8 +15,7 @@ int set_v = 0;
 void clean_buffer()
 {
     char c;
-    while ((c = getchar()) != '\n')
-        ;
+    while ((c = getchar()) != '\n');
 }
 
 int check_file_same(char * f1, char * f2)
@@ -188,6 +187,8 @@ int copy_files_to_dir(char *files[], int n, char *dir)
 
         free(new_path);
     }
+
+    return 0;
 }
 
 int is_folder(char *path)
@@ -207,7 +208,6 @@ int main(int argc, char *argv[])
 {
     int opt = 0;
     int read = 0;
-    int fd_out = -1;
     char *path_out = NULL;
     int is_dir = -1;
 

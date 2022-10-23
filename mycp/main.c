@@ -22,9 +22,9 @@ int check_file_same(char * f1, char * f2)
 {
     struct stat file1, file2;
     if(stat(f1, &file1))
-        return -1;
+        return 0;
     if(stat(f2, &file2))
-        return -1;
+        return 0;
 
     return ((file1.st_dev == file2.st_dev) && (file1.st_ino == file2.st_ino));
 }

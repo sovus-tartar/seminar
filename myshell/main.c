@@ -49,6 +49,7 @@ void parse_exec(char *line)
         char * curr = line;
         line = strtok(NULL, "|\n"); //may be NULL. if NULL do not create pipe
 
+            
         char *lex_arr[32768 / 4 - 1];
         str_args(lex_arr, curr, strlen(curr));
 
@@ -62,7 +63,6 @@ void parse_exec(char *line)
                 exit(0);
             } 
         }
-            
 
         pid_t pid = fork();
 

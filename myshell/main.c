@@ -7,10 +7,16 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <limits.h>
-
+#include <signal.h>
 #include <sys/wait.h>
 
 #define _GNU_SOURCE
+
+void sig_exiting(int signum)
+{   
+    printf("\nSEGINT recieved, exiting...\n");
+    exit(0);
+}
 
 void str_args(char ** buf, char * line, int size)
 {
@@ -112,6 +118,8 @@ void parse_exec(char *line)
 
 int main()
 {
+    signal(SIGINT, sig_exiting);
+
     while (1)
     {
         char *ptr = NULL;

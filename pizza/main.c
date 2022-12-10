@@ -87,6 +87,21 @@ int success_pizzas = 0;
 
 int stop_work_sem;
 
+char get_ingr_letter(int i)
+{
+        switch(i)
+        {
+            case P_LETTER:
+                return 'P';
+            case I_LETTER:
+                return 'I';
+            case Z_LETTER:
+                return 'Z';
+            case A_LETTER:
+                return 'A';
+        }
+}
+
 int take_ingridient(int name, int min)
 {
     p(ingr_sem);
@@ -95,7 +110,7 @@ int take_ingridient(int name, int min)
         ingr_arr[name] -= 1;
     else
     {
-        printf("Calling ingr_filler. Waiting for him\n");
+        printf("Calling ingr_filler. Waiting for him. (left: %d, letter: %c)\n", ingr_arr[name], get_ingr_letter(name));
         v(low_ingr_sem);
         wz(low_ingr_sem);
         ingr_arr[name] -= 1;
@@ -103,7 +118,7 @@ int take_ingridient(int name, int min)
 
     if (ingr_arr[name] <= min)
     {
-        printf("Calling ingr_filler. Not waiting for him\n");
+        printf("Calling ingr_filler. Not waiting for him. (left: %d letter: %c)\n", ingr_arr[name], get_ingr_letter(name));
         v(low_ingr_sem);
     }
 
@@ -141,22 +156,7 @@ int ingr_filler(int min, int max)
                 break;
             }
 
-        char c;
-        switch(i)
-        {
-            case P_LETTER:
-                c = 'P';
-                break;
-            case I_LETTER:
-                c = 'I';
-                break;
-            case Z_LETTER:
-                c = 'Z';
-                break;
-            case A_LETTER:
-                c = 'A';
-                break;
-        }
+        char c = get_ingr_letter(i);
 
         printf("Ingr_filler has filled %c ingridient\n", c);
 
@@ -418,9 +418,6 @@ int daemon_shifter(int n, int min, int max) //daemon shifter is like a manager)
             
         }
     }
-
-    for (int i = 0; i < 5; ++i)
-        wait(NULL);
 }
 
 

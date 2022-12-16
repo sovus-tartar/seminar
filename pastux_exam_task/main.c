@@ -11,7 +11,8 @@
 #include <sys/shm.h>
 #include <sys/wait.h>
 
-#define NEXT_ 1000000
+#define TO_QUEUE 100000000
+#define LEAVE_QUEUE 100000001
 
 int bridge_sem;
 
@@ -28,8 +29,7 @@ struct msg_t
     int msg_data;
 };
 
-int
-v(int sem_id, int sem_num) // unlock
+int v(int sem_id, int sem_num) // unlock
 {
     struct sembuf set1 = {sem_num, 1, 0};
     if (semop(sem_id, &set1, 1) == -1)
@@ -52,7 +52,7 @@ int p(int sem_id, int sem_num) // lock
     return 1;
 }
 
-int wo(int sem_id, int sem_num) //wait_one
+int wo(int sem_id, int sem_num) // wait_one
 {
     struct sembuf check1[2] = {{sem_num, -1, 0}, {sem_num, 1, 0}};
     if (semop(sem_id, check1, 2) == -1)
@@ -61,6 +61,40 @@ int wo(int sem_id, int sem_num) //wait_one
         exit(-1);
     }
     return 1;
+}
+
+int queue_daemon(int side)
+{
+    while (1)
+    {
+        struct msg_t rcv1;
+        msgrcv(queue_id[side], &rcv1, sizeof(int), TO_QUEUE, 0);
+
+        struct msg_t snd = {rcv1.msg_data, 0};
+
+        msgsnd(queue_id[side], &snd, sizeof(int), 0);
+
+        struct msg_t rcv2;
+
+        msgrcv(queue_id[side], &rcv2, sizeof(int), LEAVE_QUEUE, 0);
+    }
+}
+
+int stand_to_queue(int num, int side)
+{
+    struct msg_t snd = {TO_QUEUE, num};
+    msgsnd(queue_id[side], &snd, sizeof(int), 0);
+
+    struct msg_t rcv;
+    msgrcv(queue_id[side], &rcv, sizeof(int), num, 0);
+    return 0;
+}
+
+int leave_queue(int num, int side)
+{
+    struct msg_t snd = {LEAVE_QUEUE, num};
+    msgsnd(queue_id[side], &snd, sizeof(int), 0);
+    return 0;
 }
 
 void pastux(int num, int side, int times);
@@ -74,8 +108,7 @@ void init(int n0, int n1, int times)
         exit(-1);
     }
 
-    v(entry_sem, 0);
-    v(entry_sem, 1);
+
 
     bridge_sem = semget(IPC_PRIVATE, 1, 0666 | IPC_CREAT);
     if (bridge_sem == -1)
@@ -116,6 +149,16 @@ void init(int n0, int n1, int times)
         exit(-1);
     }
 
+    for(int i = 0; i < 2; ++i)
+    {
+        pid_t pid = fork();
+
+        if(pid == 0)
+        {
+            queue_daemon(i);
+        }
+    }
+
     for (int i = 1; i <= n0; ++i)
     {
         pid_t pid = fork();
@@ -138,7 +181,7 @@ void init(int n0, int n1, int times)
         }
     }
 
-
+    
 }
 
 int change_side(int side)
@@ -153,8 +196,9 @@ void pastux(int num, int side, int times)
     for (int i = 0; i < times; ++i)
     {
         printf("Pastux #%d: looking for others on the side %d\n", num, side);
-        p(entry_sem, side);
+        stand_to_queue(num, side);
         printf("Pastux #%d: time to go\n", num);
+        p(entry_sem, side);
         // definitely our turn
 
         if (side == 0)
@@ -164,7 +208,7 @@ void pastux(int num, int side, int times)
             p(bridge_sem, 0);
             printf("Pastux #%d: hat put, running back to side %d\n", num, side);
         }
-        else //side == 1 
+        else // side == 1
         {
             printf("Pastux #%d: looking for hat...\n", num);
             wo(bridge_sem, 0);
@@ -172,6 +216,7 @@ void pastux(int num, int side, int times)
         }
 
         printf("Pastux #%d: take all his cows from %d to the other side\n", num, side);
+        leave_queue(num, side);
         v(entry_sem, side);
 
         side = change_side(side);
@@ -199,7 +244,7 @@ int main(int argc, char **argv)
 
     init(n0, n1, times);
 
-    for(int i = 0; i < (n0 + n1); ++i)
+    for (int i = 0; i < (n0 + n1); ++i)
     {
         wait(NULL);
     }

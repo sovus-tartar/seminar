@@ -25,6 +25,7 @@ int arg_count(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
+    int state;
     assert(argc);
 
     printf("pid: %d\nppid: %d\n", getpid(), getppid());
@@ -45,7 +46,7 @@ int main(int argc, char *argv[])
         break;
 
     default:
-        int state = is_notnewline(argv[1]);
+        state = is_notnewline(argv[1]);
         int i = arg_count(argc, argv) + 1;
 
         for (; i < argc; i++)

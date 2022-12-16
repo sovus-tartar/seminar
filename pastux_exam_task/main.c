@@ -15,6 +15,8 @@
 
 int bridge_sem;
 
+int entry_sem;
+
 int *line_num_arr;
 int line_num_sem;
 
@@ -61,10 +63,20 @@ int wo(int sem_id, int sem_num) //wait_one
     return 1;
 }
 
-int pastux(int num, int side, int times);
+void pastux(int num, int side, int times);
 
-int init(int n0, int n1, int times)
+void init(int n0, int n1, int times)
 {
+    entry_sem = semget(IPC_PRIVATE, 2, 0666 | IPC_CREAT);
+    if (entry_sem == -1)
+    {
+        perror("entry_sem init failed");
+        exit(-1);
+    }
+
+    v(entry_sem, 0);
+    v(entry_sem, 1);
+
     bridge_sem = semget(IPC_PRIVATE, 1, 0666 | IPC_CREAT);
     if (bridge_sem == -1)
     {
@@ -134,40 +146,21 @@ int change_side(int side)
     return ((side + 1) % 2);
 }
 
-int pastux(int num, int side, int times)
+void pastux(int num, int side, int times)
 {
     printf("Pastux #%d was born on the side %d\n", num, side);
 
     for (int i = 0; i < times; ++i)
     {
-
         printf("Pastux #%d: looking for others on the side %d\n", num, side);
-        if (p(line_num_sem, side))
-        {
-            printf("Pastux #%d: lna %d\n", num, line_num_arr[side]);
-            if (line_num_arr[side] != 0)
-            {
-                line_num_arr[side] += 1;
-                printf("Pastux #%d: somebody on the side %d, waiting...\n", num, side);
-                struct msg_t message = {NEXT_, num};
-                v(line_num_sem, side);
-
-                msgsnd(queue_id[side], &message, sizeof(int), 0);
-                msgrcv(queue_id[side], NULL, 0, num, 0); // waiting for turn
-            }
-            else
-            {
-                line_num_arr[side] += 1;
-                printf("Pastux #%d: nobody on the side %d\n", num, side);
-                v(line_num_sem, side);
-            }
-        }
-
+        p(entry_sem, side);
+        printf("Pastux #%d: time to go\n", num);
         // definitely our turn
 
         if (side == 0)
         {
             printf("Pastux #%d: run from side %d to other side to put hat\n", num, side);
+            wo(entry_sem, change_side(side));
             p(bridge_sem, 0);
             printf("Pastux #%d: hat put, running back to side %d\n", num, side);
         }
@@ -179,19 +172,7 @@ int pastux(int num, int side, int times)
         }
 
         printf("Pastux #%d: take all his cows from %d to the other side\n", num, side);
-        if (p(line_num_sem, side))
-        {
-            line_num_arr[side] -= 1;
-            v(line_num_sem, 0);
-        }
-
-        int num_of_next = -1;
-        msgrcv(queue_id[side], &num_of_next, sizeof(int), 0, IPC_NOWAIT);
-        if (num_of_next != -1)
-        {
-            long msg_to_next = num_of_next;
-            msgsnd(queue_id[side], &msg_to_next, 0, 0);
-        }
+        v(entry_sem, side);
 
         side = change_side(side);
 
@@ -204,6 +185,9 @@ int pastux(int num, int side, int times)
             printf("Pastux #%d: hat has been removed\n", num);
         }
     }
+
+    printf("Pastux #%d: has died\n", num);
+    exit(0);
 }
 
 int main(int argc, char **argv)
